@@ -1,0 +1,18 @@
+[package]
+name = "youtube-helper-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Rust wrapper around the yt-dlp binary: video metadata and audio downloads, no reimplementation of yt-dlp itself."
+license = "BSD-3-Clause"
+repository = "https://github.com/warith-harchaoui/youtube-helper-rs"
+readme = "README.md"
+keywords = ["youtube", "yt-dlp", "video", "audio", "download"]
+categories = ["multimedia", "api-bindings"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
