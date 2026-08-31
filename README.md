@@ -1,6 +1,10 @@
-# youtube-helper-rs
+# YouTube Helper (Rust)
 
-Rust port of the promise made by [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper) (Python), not a line-by-line port of its code. `youtube-helper-rs` shells out to the [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) binary via `std::process::Command` and turns its output into typed Rust values and a `thiserror` error enum. It does not reimplement any of `yt-dlp`'s extraction logic — `yt-dlp` already knows how to talk to hundreds of video sites; this crate just wraps one consistent Rust interface around invoking it.
+[🇫🇷](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/README.md)
+
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](./LICENSE)
+
+Rust rewrite of the core promise of [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper), not a line-by-line port of its code. `youtube-helper-rs` shells out to the [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) binary via `std::process::Command` and turns its output into typed Rust values and a `thiserror` error enum. It does not reimplement any of `yt-dlp`'s extraction logic — `yt-dlp` already knows how to talk to hundreds of video sites; this crate just wraps one consistent Rust interface around invoking it.
 
 ## v0.1 scope (honest, not aspirational)
 
@@ -62,18 +66,18 @@ The `--ignored` tests are skipped by default because they touch the network. Kno
 
 Most error branches (`CommandFailed`, `OutputFileNotFound`, the `InvalidUrl` message-detection path, non-`NotFound` spawn errors, malformed/empty `yt-dlp` stdout) are exercised deterministically, without the network, by pointing `YOUTUBE_HELPER_YTDLP_BIN` at small fake shell scripts written on the fly (`src/test_support.rs`) — that's most of `cargo test`'s test count, not the two `#[ignore]`d ones.
 
-## État du projet
+## Project status
 
-Ce qui compte ici, c'est le taux de couverture réel, pas le nombre de commits. Mesuré avec [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov) :
+What matters here is the real coverage percentage, not a commit count. Measured with [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov):
 
-| Suite                                             | Lignes       | Fonctions   | Régions     |
+| Suite                                             | Lines       | Functions   | Regions     |
 |----------------------------------------------------|--------------|-------------|-------------|
-| `cargo test` (sans réseau, safe pour CI)            | 89.66 % (286/319) | 64.44 % (29/45) | 84.01 % (452/538) |
-| `cargo test -- --include-ignored` (avec les 2 tests réseau) | 97.49 % (311/319) | 88.89 % (40/45) | 94.24 % (507/538) |
+| `cargo test` (no network, CI-safe)                  | 89.66% (286/319) | 64.44% (29/45) | 84.01% (452/538) |
+| `cargo test -- --include-ignored` (with the 2 network tests) | 97.49% (311/319) | 88.89% (40/45) | 94.24% (507/538) |
 
-Les lignes non couvertes même avec les tests réseau sont concentrées dans `download.rs` (quelques branches d'erreur `OutputFileNotFound` qui nécessiteraient un `yt-dlp` réel produisant un chemin absent d'une manière que le faux script ne reproduit pas exactement) — le détail est visible avec `cargo llvm-cov report --show-missing-lines`.
+The lines still uncovered with network tests included are concentrated in `download.rs` (a few `OutputFileNotFound` error branches that would need a real `yt-dlp` producing a missing path in a way the fake script doesn't reproduce exactly) — see the detail with `cargo llvm-cov report --show-missing-lines`.
 
-Pour relancer la mesure :
+To reproduce:
 
 ```bash
 cargo install cargo-llvm-cov --locked
@@ -87,8 +91,14 @@ cargo llvm-cov --summary-only                                                   
 cargo llvm-cov --summary-only --ignore-run-fail -- --include-ignored --test-threads=1  # avec les tests réseau
 ```
 
+## Related
+
+Part of the same author's local-first tooling as [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper) (Python) and the [AI Helpers](https://github.com/warith-harchaoui/ai-helpers) suite. Independent rewrite, not a binding.
+
+## Author
+
+[Warith HARCHAOUI](https://linkedin.com/in/warith-harchaoui)
+
 ## License
 
 BSD-3-Clause, see `LICENSE`.
-
-Part of the same lineage as the [AI Helpers](https://github.com/warith-harchaoui/ai-helpers) suite (Python); this crate is an independent Rust rewrite, not a binding.
