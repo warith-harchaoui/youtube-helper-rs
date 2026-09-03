@@ -52,11 +52,15 @@ pub fn download_audio(url: &str, out_dir: &Path) -> Result<PathBuf> {
         .lines()
         .map(str::trim)
         .rfind(|line| !line.is_empty())
-        .ok_or_else(|| YoutubeHelperError::OutputFileNotFound { directory: out_dir.to_path_buf() })?;
+        .ok_or_else(|| YoutubeHelperError::OutputFileNotFound {
+            directory: out_dir.to_path_buf(),
+        })?;
 
     let path = PathBuf::from(printed_path);
     if !path.is_file() {
-        return Err(YoutubeHelperError::OutputFileNotFound { directory: out_dir.to_path_buf() });
+        return Err(YoutubeHelperError::OutputFileNotFound {
+            directory: out_dir.to_path_buf(),
+        });
     }
 
     Ok(path)
@@ -76,7 +80,9 @@ mod tests {
     #[test]
     fn download_audio_reports_missing_binary() {
         let dir = tempfile::tempdir().unwrap();
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`; see the equivalent test in
         // `metadata.rs`.
         unsafe {
@@ -86,7 +92,10 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::BinaryNotFound { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::BinaryNotFound { .. })
+        ));
     }
 
     #[test]
@@ -97,7 +106,9 @@ mod tests {
             script_dir.path(),
             "echo 'ERROR: network unreachable' 1>&2\nexit 1\n",
         );
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -106,7 +117,10 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::CommandFailed { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::CommandFailed { .. })
+        ));
     }
 
     #[test]
@@ -114,7 +128,9 @@ mod tests {
         let out_dir = tempfile::tempdir().unwrap();
         let script_dir = tempfile::tempdir().unwrap();
         let script = crate::test_support::write_fake_ytdlp(script_dir.path(), "exit 0\n");
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -123,7 +139,10 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::OutputFileNotFound { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::OutputFileNotFound { .. })
+        ));
     }
 
     #[test]
@@ -135,7 +154,9 @@ mod tests {
             script_dir.path(),
             &format!("echo '{}'\nexit 0\n", missing.display()),
         );
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -144,7 +165,10 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::OutputFileNotFound { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::OutputFileNotFound { .. })
+        ));
     }
 
     #[test]
@@ -154,9 +178,15 @@ mod tests {
         let target = out_dir.path().join("fake.wav");
         let script = crate::test_support::write_fake_ytdlp(
             script_dir.path(),
-            &format!("touch '{}'\necho '{}'\nexit 0\n", target.display(), target.display()),
+            &format!(
+                "touch '{}'\necho '{}'\nexit 0\n",
+                target.display(),
+                target.display()
+            ),
         );
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -180,7 +210,9 @@ mod tests {
         // Hold the same lock as the env-var-mutating tests so this test
         // never observes `YOUTUBE_HELPER_YTDLP_BIN` mid-mutation from
         // another thread when run with `--include-ignored`.
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let dir = tempfile::tempdir().unwrap();
         let path = download_audio("https://www.youtube.com/watch?v=jNQXAC9IVRw", dir.path())
             .expect("download_audio should succeed against a real, stable public video");

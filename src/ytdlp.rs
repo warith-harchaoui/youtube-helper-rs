@@ -28,7 +28,10 @@ pub(crate) fn run(args: &[&str]) -> Result<Output> {
         .output()
         .map_err(|source| {
             if source.kind() == std::io::ErrorKind::NotFound {
-                YoutubeHelperError::BinaryNotFound { binary: binary.clone(), source }
+                YoutubeHelperError::BinaryNotFound {
+                    binary: binary.clone(),
+                    source,
+                }
             } else {
                 YoutubeHelperError::Io(source)
             }
@@ -62,9 +65,15 @@ pub(crate) fn validate_url(url: &str) -> Result<()> {
 pub(crate) fn map_failure(url: &str, output: &Output) -> YoutubeHelperError {
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     if stderr.contains("Unsupported URL") || stderr.contains("is not a valid URL") {
-        YoutubeHelperError::InvalidUrl { url: url.to_string(), reason: stderr }
+        YoutubeHelperError::InvalidUrl {
+            url: url.to_string(),
+            reason: stderr,
+        }
     } else {
-        YoutubeHelperError::CommandFailed { status: output.status.to_string(), stderr }
+        YoutubeHelperError::CommandFailed {
+            status: output.status.to_string(),
+            stderr,
+        }
     }
 }
 
@@ -78,7 +87,11 @@ mod tests {
     /// message-based branching without needing a real `yt-dlp` failure.
     fn failed_output_with_stderr(stderr: &str) -> Output {
         let status = Command::new("false").status().expect("run `false`");
-        Output { status, stdout: Vec::new(), stderr: stderr.as_bytes().to_vec() }
+        Output {
+            status,
+            stdout: Vec::new(),
+            stderr: stderr.as_bytes().to_vec(),
+        }
     }
 
     #[test]
@@ -108,7 +121,9 @@ mod tests {
         // directory" / permission denied), exercising the `else` branch
         // in `run`'s error mapping.
         let dir = tempfile::tempdir().unwrap();
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", dir.path());

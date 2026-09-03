@@ -75,11 +75,9 @@ pub fn fetch_metadata(url: &str) -> Result<VideoMetadata> {
     let first_line = stdout
         .lines()
         .find(|line| !line.trim().is_empty())
-        .ok_or_else(|| {
-            YoutubeHelperError::CommandFailed {
-                status: output.status.to_string(),
-                stderr: "yt-dlp produced no JSON output on stdout".to_string(),
-            }
+        .ok_or_else(|| YoutubeHelperError::CommandFailed {
+            status: output.status.to_string(),
+            stderr: "yt-dlp produced no JSON output on stdout".to_string(),
         })?;
 
     let metadata: VideoMetadata = serde_json::from_str(first_line)?;
@@ -104,7 +102,9 @@ mod tests {
 
     #[test]
     fn fetch_metadata_reports_missing_binary() {
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized against other env-mutating tests via
         // `ENV_MUTEX` above (the env var is process-wide and `cargo test`
         // runs tests concurrently by default).
@@ -115,7 +115,10 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::BinaryNotFound { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::BinaryNotFound { .. })
+        ));
     }
 
     #[test]
@@ -125,7 +128,9 @@ mod tests {
             script_dir.path(),
             "echo 'ERROR: rate limited' 1>&2\nexit 1\n",
         );
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -134,14 +139,19 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::CommandFailed { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::CommandFailed { .. })
+        ));
     }
 
     #[test]
     fn fetch_metadata_errors_when_ytdlp_prints_no_json() {
         let script_dir = tempfile::tempdir().unwrap();
         let script = crate::test_support::write_fake_ytdlp(script_dir.path(), "exit 0\n");
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -150,7 +160,10 @@ mod tests {
         unsafe {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
-        assert!(matches!(result, Err(YoutubeHelperError::CommandFailed { .. })));
+        assert!(matches!(
+            result,
+            Err(YoutubeHelperError::CommandFailed { .. })
+        ));
     }
 
     #[test]
@@ -162,7 +175,9 @@ mod tests {
 exit 0
 "#,
         );
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         // SAFETY: serialized via `ENV_MUTEX`.
         unsafe {
             std::env::set_var("YOUTUBE_HELPER_YTDLP_BIN", &script);
@@ -187,7 +202,9 @@ exit 0
         // Hold the same lock as the env-var-mutating tests so this test
         // never observes `YOUTUBE_HELPER_YTDLP_BIN` mid-mutation from
         // another thread when run with `--include-ignored`.
-        let _guard = crate::ENV_MUTEX.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let metadata = fetch_metadata("https://www.youtube.com/watch?v=jNQXAC9IVRw")
             .expect("fetch_metadata should succeed against a real, stable public video");
 
@@ -195,6 +212,9 @@ exit 0
         assert!(!metadata.title.is_empty());
         assert!(metadata.duration.unwrap_or(0.0) > 0.0);
         assert!(metadata.uploader.is_some());
-        assert!(metadata.webpage_url.unwrap_or_default().contains("jNQXAC9IVRw"));
+        assert!(metadata
+            .webpage_url
+            .unwrap_or_default()
+            .contains("jNQXAC9IVRw"));
     }
 }
