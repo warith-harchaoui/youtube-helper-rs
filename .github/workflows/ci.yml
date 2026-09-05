@@ -40,3 +40,12 @@ jobs:
 
       - name: Tests (unit + integration + doc-tests)
         run: cargo test --all
+
+      # The steps above all build against the committed Cargo.lock, which pins dependency
+      # versions no downstream consumer ever sees: a range that has gone bad stays green
+      # here while breaking every fresh `cargo add` / `cargo install`. (md2star-rs 0.4.0
+      # shipped uninstallable for exactly this reason, with this matrix green.) One Linux
+      # run of a lock-free resolve closes that blind spot without tripling the cost.
+      - name: Fresh resolve (no Cargo.lock — what a downstream consumer gets)
+        if: matrix.os == 'ubuntu-latest'
+        run: ./scripts/check-fresh-resolve.sh

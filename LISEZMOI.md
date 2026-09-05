@@ -98,6 +98,22 @@ cargo llvm-cov --summary-only                                                   
 cargo llvm-cov --summary-only --ignore-run-fail -- --include-ignored --test-threads=1  # avec les tests réseau
 ```
 
+## Vérifications avant de pousser
+
+```bash
+scripts/install-hooks.sh   # une fois par clone : installe le garde-fou pre-push ci-dessous
+cargo fmt --all --check
+cargo clippy --all-targets -- -D warnings
+cargo test --all
+scripts/check-fresh-resolve.sh   # compile sans Cargo.lock, comme un consommateur en aval
+```
+
+Le dernier existe parce que les trois autres, et la CI, compilent tous contre le
+`Cargo.lock` commité — que personne n'utilise en aval du crate publié. Un intervalle de
+dépendance devenu mauvais reste vert ici tout en cassant chaque `cargo add` / `cargo
+install` neuf, et `cargo publish --dry-run` ne le voit pas non plus (il vérifie avec le
+même lock). La CI lance ce contrôle une fois, sous Linux.
+
 ## Projets liés
 
 Fait partie du même socle d'outils locaux que [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper) (Python) et la suite [AI Helpers](https://github.com/warith-harchaoui/ai-helpers). Réécriture indépendante, pas une liaison (*binding*).
