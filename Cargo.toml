@@ -1,6 +1,6 @@
 [package]
 name = "youtube-helper-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Rust wrapper around the yt-dlp binary: video metadata and audio downloads, no reimplementation of yt-dlp itself."
 license = "BSD-3-Clause"
