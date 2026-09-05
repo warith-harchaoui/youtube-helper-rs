@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#
+# Pre-push gate: nothing red leaves this machine.
+#
+# Enabled per clone by scripts/install-hooks.sh, which points this repo's
+# core.hooksPath here. That is deliberate: a global core.hooksPath (git-lfs
+# installs one) silently overrides .git/hooks, so a hook dropped there is never
+# run. The git-lfs delegations below replicate what the global hooks did, so
+# redirecting hooksPath doesn't cost this repo its LFS support.
+set -euo pipefail
+
+echo "pre-push: cargo fmt --all --check"
+cargo fmt --all --check
+
+echo "pre-push: cargo clippy --all-targets -- -D warnings"
+cargo clippy --all-targets -- -D warnings
+
+echo "pre-push: cargo test --all"
+cargo test --all
+
+# The three checks above build against the committed Cargo.lock and therefore
+# cannot see a dependency range that has gone bad for everyone downstream.
+echo "pre-push: fresh resolve (no Cargo.lock)"
+"$(git rev-parse --show-toplevel)/scripts/check-fresh-resolve.sh"
+
+echo "pre-push: OK"
+
+# Run last: on a rejected push there is no point uploading LFS objects first.
+if command -v git-lfs >/dev/null 2>&1; then
+  git lfs pre-push "$@"
+fi

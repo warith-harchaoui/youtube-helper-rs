@@ -1,0 +1,6 @@
+#!/bin/sh
+# Pass-through to git-lfs. This repo sets its own core.hooksPath (see
+# scripts/install-hooks.sh), which shadows the global hooks git-lfs installs —
+# so its side of the contract has to be repeated here.
+command -v git-lfs >/dev/null 2>&1 || exit 0
+git lfs post-merge "$@"
