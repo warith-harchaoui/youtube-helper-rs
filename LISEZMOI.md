@@ -1,8 +1,8 @@
 # YouTube Helper (Rust)
 
-[🇫🇷](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/README.md)
+[🇫🇷](https://github.com/warith-harchaoui/youtube-helper-rs/blob/master/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/youtube-helper-rs/blob/master/README.md)
 
-[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](./LICENSE)
+[![crates.io](https://img.shields.io/crates/v/youtube-helper-rs.svg)](https://crates.io/crates/youtube-helper-rs) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](./LICENSE)
 
 Réécriture en Rust de la promesse centrale de [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper), pas un portage ligne à ligne de son code. `youtube-helper-rs` invoque le binaire [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) en sous-processus via `std::process::Command` et transforme sa sortie en valeurs Rust typées et en une énumération d'erreurs `thiserror`. Il ne réimplémente aucune logique d'extraction de `yt-dlp` — `yt-dlp` sait déjà parler à des centaines de sites vidéo ; ce crate se contente d'envelopper son invocation dans une interface Rust cohérente.
 
@@ -33,6 +33,13 @@ C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas d
 ```bash
 brew install yt-dlp       # macOS
 pip install -U yt-dlp     # partout où Python est disponible
+```
+
+## Installation
+
+```toml
+[dependencies]
+youtube-helper-rs = "0.1"
 ```
 
 ## Utilisation

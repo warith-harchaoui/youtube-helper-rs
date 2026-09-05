@@ -1,8 +1,8 @@
 # YouTube Helper (Rust)
 
-[🇫🇷](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/README.md)
+[🇫🇷](https://github.com/warith-harchaoui/youtube-helper-rs/blob/master/LISEZMOI.md) · [🇬🇧](https://github.com/warith-harchaoui/youtube-helper-rs/blob/master/README.md)
 
-[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](./LICENSE)
+[![crates.io](https://img.shields.io/crates/v/youtube-helper-rs.svg)](https://crates.io/crates/youtube-helper-rs) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](./LICENSE)
 
 Rust rewrite of the core promise of [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper), not a line-by-line port of its code. `youtube-helper-rs` shells out to the [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) binary via `std::process::Command` and turns its output into typed Rust values and a `thiserror` error enum. It does not reimplement any of `yt-dlp`'s extraction logic — `yt-dlp` already knows how to talk to hundreds of video sites; this crate just wraps one consistent Rust interface around invoking it.
 
@@ -33,6 +33,13 @@ That's it for v0.1. No video download, no thumbnail download, no stream catalog 
 ```bash
 brew install yt-dlp       # macOS
 pip install -U yt-dlp     # anywhere with Python
+```
+
+## Install
+
+```toml
+[dependencies]
+youtube-helper-rs = "0.1"
 ```
 
 ## Usage
