@@ -9,6 +9,10 @@
 //! download ([`download_audio`]). See `README.md` for the full picture of
 //! what is and is not covered.
 
+// Every public item carries a doc comment. Warned here, denied by CI's
+// `-D warnings`, so a published API never reaches docs.rs undocumented.
+#![warn(missing_docs)]
+
 pub mod download;
 pub mod error;
 pub mod metadata;

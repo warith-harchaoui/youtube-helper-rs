@@ -15,7 +15,9 @@ pub enum YoutubeHelperError {
     /// The `yt-dlp` binary could not be found or executed (e.g. not on `PATH`).
     #[error("yt-dlp binary not found (looked for `{binary}`): {source}")]
     BinaryNotFound {
+        /// The command that was looked for, as spelled when spawning it.
         binary: String,
+        /// The spawn error itself, usually "no such file or directory".
         #[source]
         source: std::io::Error,
     },
@@ -23,14 +25,25 @@ pub enum YoutubeHelperError {
     /// The URL given to a function is empty, malformed, or rejected by
     /// `yt-dlp` as unsupported before any network call could complete.
     #[error("invalid or unsupported URL `{url}`: {reason}")]
-    InvalidUrl { url: String, reason: String },
+    InvalidUrl {
+        /// The URL as given.
+        url: String,
+        /// Why it was rejected, from `yt-dlp` when it got that far.
+        reason: String,
+    },
 
     /// `yt-dlp` ran but exited with a non-zero status for a reason other
     /// than an invalid URL (network failure, geo-blocking, age restriction,
     /// removed video, rate limiting, ...). The raw stderr is preserved so
     /// the caller can decide how to react.
     #[error("yt-dlp command failed (exit status: {status}): {stderr}")]
-    CommandFailed { status: String, stderr: String },
+    CommandFailed {
+        /// The process exit status, rendered as text.
+        status: String,
+        /// `yt-dlp`'s own stderr, verbatim: that is where the actual reason
+        /// lives, and it is preserved so the caller can match on it.
+        stderr: String,
+    },
 
     /// `yt-dlp --dump-json` succeeded but its stdout could not be parsed as
     /// the expected JSON shape.
@@ -40,7 +53,10 @@ pub enum YoutubeHelperError {
     /// `yt-dlp` reported success but the expected output file could not be
     /// located afterwards.
     #[error("expected output file not found after download in `{directory}`")]
-    OutputFileNotFound { directory: PathBuf },
+    OutputFileNotFound {
+        /// The directory that was searched.
+        directory: PathBuf,
+    },
 
     /// Any other I/O failure (creating the output directory, reading it
     /// back, ...).
@@ -48,4 +64,6 @@ pub enum YoutubeHelperError {
     Io(#[from] std::io::Error),
 }
 
+/// This crate's `Result`: one error type throughout, so `?` composes without
+/// per-call conversion.
 pub type Result<T> = std::result::Result<T, YoutubeHelperError>;
