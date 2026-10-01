@@ -8,12 +8,15 @@ Réécriture en Rust de la promesse centrale de [`youtube-helper`](https://githu
 
 ## Périmètre v0.1 (honnête, pas aspirationnel)
 
-Deux fonctions, volontairement :
+Trois fonctions, volontairement :
 
 - `fetch_metadata(url: &str) -> Result<VideoMetadata, YoutubeHelperError>` — lance `yt-dlp --dump-json <url>` et parse le résultat dans une structure `VideoMetadata` (`id`, `title`, `duration`, `uploader`, `channel`, `webpage_url`, `description`, `upload_date`, `view_count`, `like_count`, `thumbnail`). La présence de chaque champ a été vérifiée à la main sur un vrai appel `yt-dlp --dump-json`, pas devinée depuis la documentation.
 - `download_audio(url: &str, out_dir: &Path) -> Result<PathBuf, YoutubeHelperError>` — lance `yt-dlp -x --audio-format wav <url>` avec `--print after_move:filepath`, si bien que le chemin renvoyé est exactement celui que `yt-dlp` lui-même rapporte comme fichier final, pas une reconstruction devinée depuis le gabarit de sortie.
+- `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — lance `yt-dlp --get-url -f bestaudio/best <url>` et rend l'adresse signée du média, sans rien télécharger.
 
-C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas de catalogue de flux/résolution d'URL directe, pas de métadonnées de chaîne/engagement, pas de sous-titres, pas de commentaires, pas de post-traitement ffmpeg, pas de repli Tor — tout cela existe dans l'original Python et reste volontairement hors périmètre ici, tant qu'aucun usage réel ne le réclame.
+**Télécharger ou résoudre ? Se tromper échoue d'une façon difficile à lire.** Télécharger quand le média finit et qu'on veut un fichier. Résoudre quand on veut lire au fil de l'eau, et surtout quand le média peut ne pas finir : **une émission en direct ne finit jamais de se télécharger**, donc `download_audio` sur un direct ne rend jamais la main, là où `resolve_media_url` rend un manifeste HLS qu'un lecteur suit aussi longtemps que l'émission dure. L'adresse rendue est signée et périme en quelques heures : la résoudre juste avant de s'en servir, et ne jamais la garder.
+
+C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas de catalogue de flux, pas de métadonnées de chaîne/engagement, pas de sous-titres, pas de commentaires, pas de post-traitement ffmpeg, pas de repli Tor — tout cela existe dans l'original Python et reste volontairement hors périmètre ici, tant qu'aucun usage réel ne le réclame.
 
 ## Gestion des erreurs
 
@@ -46,17 +49,23 @@ youtube-helper-rs = "0.1"
 
 ```rust
 use std::path::Path;
-use youtube_helper_rs::{download_audio, fetch_metadata};
+use youtube_helper_rs::{download_audio, fetch_metadata, resolve_media_url};
 
 fn main() -> Result<(), youtube_helper_rs::YoutubeHelperError> {
     let meta = fetch_metadata("https://www.youtube.com/watch?v=jNQXAC9IVRw")?;
     println!("{} ({:?}s) par {:?}", meta.title, meta.duration, meta.uploader);
 
+    // Un média qui finit, et dont on veut un fichier :
     let audio_path = download_audio(
         "https://www.youtube.com/watch?v=jNQXAC9IVRw",
         Path::new("./out"),
     )?;
     println!("audio enregistré dans {}", audio_path.display());
+
+    // Un média qu'on veut lire au fil de l'eau — la seule des deux options qui
+    // marche sur un direct, qui ne finit jamais de se télécharger :
+    let adresse = resolve_media_url("https://www.youtube.com/watch?v=jNQXAC9IVRw")?;
+    println!("à lire avec : ffmpeg -i '{adresse}' ...");
 
     Ok(())
 }

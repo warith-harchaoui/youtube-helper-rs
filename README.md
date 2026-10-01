@@ -8,12 +8,15 @@ Rust rewrite of the core promise of [`youtube-helper`](https://github.com/warith
 
 ## v0.1 scope (honest, not aspirational)
 
-Two functions, on purpose:
+Three functions, on purpose:
 
 - `fetch_metadata(url: &str) -> Result<VideoMetadata, YoutubeHelperError>` — runs `yt-dlp --dump-json <url>` and parses the result into a `VideoMetadata` struct (`id`, `title`, `duration`, `uploader`, `channel`, `webpage_url`, `description`, `upload_date`, `view_count`, `like_count`, `thumbnail`). Field presence was checked by hand against a real `yt-dlp --dump-json` call, not guessed from documentation.
 - `download_audio(url: &str, out_dir: &Path) -> Result<PathBuf, YoutubeHelperError>` — runs `yt-dlp -x --audio-format wav <url>` with `--print after_move:filepath`, so the returned path is exactly what `yt-dlp` itself reports as the final file, not a guess reconstructed from the output template.
+- `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — runs `yt-dlp --get-url -f bestaudio/best <url>` and returns the signed media address, without downloading anything.
 
-That's it for v0.1. No video download, no thumbnail download, no stream catalog / direct-URL resolution, no channel/engagement metadata, no subtitles, no comments, no ffmpeg post-processing, no Tor fallback — all present in the Python original, all deliberately out of scope here until there's a real consumer that needs them.
+**Download or resolve? The wrong choice fails in a way that is hard to read.** Download when the media ends and you want a file. Resolve when you want to stream, and especially when the media may not end: a live broadcast never finishes downloading, so `download_audio` on one blocks forever, while `resolve_media_url` returns an HLS manifest a player follows for as long as the broadcast lasts. The resolved URL is signed and expires within hours — resolve immediately before use, never persist it.
+
+That's it for v0.1. No video download, no thumbnail download, no stream catalog, no channel/engagement metadata, no subtitles, no comments, no ffmpeg post-processing, no Tor fallback — all present in the Python original, all deliberately out of scope here until there's a real consumer that needs them.
 
 ## Error handling
 
@@ -46,17 +49,23 @@ youtube-helper-rs = "0.1"
 
 ```rust
 use std::path::Path;
-use youtube_helper_rs::{download_audio, fetch_metadata};
+use youtube_helper_rs::{download_audio, fetch_metadata, resolve_media_url};
 
 fn main() -> Result<(), youtube_helper_rs::YoutubeHelperError> {
     let meta = fetch_metadata("https://www.youtube.com/watch?v=jNQXAC9IVRw")?;
     println!("{} ({:?}s) by {:?}", meta.title, meta.duration, meta.uploader);
 
+    // Media that ends, and you want a file:
     let audio_path = download_audio(
         "https://www.youtube.com/watch?v=jNQXAC9IVRw",
         Path::new("./out"),
     )?;
     println!("audio saved to {}", audio_path.display());
+
+    // Media you want to stream — the only option that works on a live
+    // broadcast, which never finishes downloading:
+    let media_url = resolve_media_url("https://www.youtube.com/watch?v=jNQXAC9IVRw")?;
+    println!("stream it with: ffmpeg -i '{media_url}' ...");
 
     Ok(())
 }
