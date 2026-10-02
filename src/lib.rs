@@ -6,7 +6,8 @@
 //! typed Rust values and a `thiserror`-based error enum.
 //!
 //! v0.1 scope: video metadata retrieval ([`fetch_metadata`]), audio download
-//! ([`download_audio`]) and direct media URL resolution
+//! ([`download_audio`], or [`download_audio_with_options`] to pick the
+//! [`AudioFormat`]) and direct media URL resolution
 //! ([`resolve_media_url`]). See `README.md` for the full picture of what is
 //! and is not covered.
 //!
@@ -17,9 +18,13 @@
 //! [`download_audio`] on one blocks forever, while [`resolve_media_url`]
 //! returns an address a player can follow for as long as the broadcast lasts.
 
-// Every public item carries a doc comment. Warned here, denied by CI's
-// `-D warnings`, so a published API never reaches docs.rs undocumented.
-#![warn(missing_docs)]
+// Every public item carries a doc comment, and no `unsafe` appears in the shipped
+// crate — both are enforced here rather than left to review. The `forbid` is lifted
+// under `cfg(test)` only: a couple of tests set a process-wide environment variable,
+// which Rust requires `unsafe` for, and that code never reaches a consumer. `deny`
+// (not `warn`) so the gate holds locally too, not only under CI's `-D warnings`.
+#![cfg_attr(not(test), forbid(unsafe_code))]
+#![deny(missing_docs)]
 
 pub mod download;
 pub mod error;
@@ -29,7 +34,7 @@ pub mod resolve;
 mod test_support;
 mod ytdlp;
 
-pub use download::download_audio;
+pub use download::{download_audio, download_audio_with_options, AudioFormat, DownloadOptions};
 pub use error::{Result, YoutubeHelperError};
 pub use metadata::{fetch_metadata, VideoMetadata};
 pub use resolve::resolve_media_url;

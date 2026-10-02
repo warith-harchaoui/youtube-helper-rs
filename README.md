@@ -8,10 +8,11 @@ Rust rewrite of the core promise of [`youtube-helper`](https://github.com/warith
 
 ## v0.1 scope (honest, not aspirational)
 
-Three functions, on purpose:
+Four functions, on purpose:
 
 - `fetch_metadata(url: &str) -> Result<VideoMetadata, YoutubeHelperError>` — runs `yt-dlp --dump-json <url>` and parses the result into a `VideoMetadata` struct (`id`, `title`, `duration`, `uploader`, `channel`, `webpage_url`, `description`, `upload_date`, `view_count`, `like_count`, `thumbnail`). Field presence was checked by hand against a real `yt-dlp --dump-json` call, not guessed from documentation.
 - `download_audio(url: &str, out_dir: &Path) -> Result<PathBuf, YoutubeHelperError>` — runs `yt-dlp -x --audio-format wav <url>` with `--print after_move:filepath`, so the returned path is exactly what `yt-dlp` itself reports as the final file, not a guess reconstructed from the output template.
+- `download_audio_with_options(url, out_dir, &DownloadOptions)` — the same, in the `AudioFormat` of your choice: `Wav` (the default), `Mp3`, `M4a`, `Opus`, `Flac`, or `Best` (the source's own format, no re-encoding). WAV is right for a decoder and wrong for anything that has to travel — roughly ten times the size, and re-encoding a lossy source to it loses quality while gaining none back.
 - `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — runs `yt-dlp --get-url -f bestaudio/best <url>` and returns the signed media address, without downloading anything.
 
 **Download or resolve? The wrong choice fails in a way that is hard to read.** Download when the media ends and you want a file. Resolve when you want to stream, and especially when the media may not end: a live broadcast never finishes downloading, so `download_audio` on one blocks forever, while `resolve_media_url` returns an HLS manifest a player follows for as long as the broadcast lasts. The resolved URL is signed and expires within hours — resolve immediately before use, never persist it.
@@ -31,7 +32,7 @@ That's it for v0.1. No video download, no thumbnail download, no stream catalog,
 
 ## Requirements
 
-`yt-dlp` must be installed and reachable on `PATH` (or via the `YOUTUBE_HELPER_YTDLP_BIN` environment variable, which is how the test suite points at a nonexistent binary to exercise `BinaryNotFound` without touching a real install).
+Rust 1.85 or newer. `yt-dlp` must be installed and reachable on `PATH` (or via the `YOUTUBE_HELPER_YTDLP_BIN` environment variable, which is how the test suite points at a nonexistent binary to exercise `BinaryNotFound` without touching a real install).
 
 ```bash
 brew install yt-dlp       # macOS
@@ -86,10 +87,12 @@ Most error branches (`CommandFailed`, `OutputFileNotFound`, the `InvalidUrl` mes
 
 What matters here is the real coverage percentage, not a commit count. Measured with [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov):
 
+Re-measured 2026-10-02 for 0.1.3:
+
 | Suite                                             | Lines       | Functions   | Regions     |
 |----------------------------------------------------|--------------|-------------|-------------|
-| `cargo test` (no network, CI-safe)                  | 89.66% (286/319) | 64.44% (29/45) | 84.01% (452/538) |
-| `cargo test -- --include-ignored` (with the 2 network tests) | 97.49% (311/319) | 88.89% (40/45) | 94.24% (507/538) |
+| `cargo test` (no network, CI-safe)                  | 89.98% (467/519) | 70.15% (47/67) | 85.13% (624/733) |
+| `cargo test -- --include-ignored` (with the 3 network tests) | 97.11% (504/519) | 77.61% (52/67) | 93.32% (684/733) |
 
 The lines still uncovered with network tests included are concentrated in `download.rs` (a few `OutputFileNotFound` error branches that would need a real `yt-dlp` producing a missing path in a way the fake script doesn't reproduce exactly) — see the detail with `cargo llvm-cov report --show-missing-lines`.
 

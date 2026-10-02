@@ -1,10 +1,20 @@
 name: CI
 
-# Rigorous, blocking CI (house rule 14): a red build cannot merge. Format, lint, and test
-# on all three desktop OSes so the "runs everywhere" promise is checked, not assumed.
+# Deliberately light: one Linux job, nothing else. The heavy, cross-platform,
+# network-touching testing is a *local* responsibility — `.githooks/pre-push`
+# runs the same four gates before a push can even leave the machine, so by the
+# time this workflow starts, everything in it has already passed once. CI is the
+# confirmation, not the first run. (A three-OS matrix lived here until
+# 2026-10-02; it tripled the cost to re-prove what the pre-push gate proves, and
+# every job still blocks, so nothing merges red.)
 on:
   push:
   pull_request:
+
+# A burst of pushes to the same branch should cost one run, not one per commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,15 +22,11 @@ env:
   RUSTFLAGS: "-D warnings"
 
 jobs:
-  test:
-    name: ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+  check:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust (stable + rustfmt + clippy)
         uses: dtolnay/rust-toolchain@stable
@@ -44,8 +50,7 @@ jobs:
       # The steps above all build against the committed Cargo.lock, which pins dependency
       # versions no downstream consumer ever sees: a range that has gone bad stays green
       # here while breaking every fresh `cargo add` / `cargo install`. (md2star-rs 0.4.0
-      # shipped uninstallable for exactly this reason, with this matrix green.) One Linux
-      # run of a lock-free resolve closes that blind spot without tripling the cost.
+      # shipped uninstallable for exactly this reason, with this matrix green.) A lock-free
+      # resolve closes that blind spot.
       - name: Fresh resolve (no Cargo.lock — what a downstream consumer gets)
-        if: matrix.os == 'ubuntu-latest'
         run: ./scripts/check-fresh-resolve.sh

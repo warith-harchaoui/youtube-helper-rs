@@ -6,12 +6,13 @@
 
 Réécriture en Rust de la promesse centrale de [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper), pas un portage ligne à ligne de son code. `youtube-helper-rs` invoque le binaire [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) en sous-processus via `std::process::Command` et transforme sa sortie en valeurs Rust typées et en une énumération d'erreurs `thiserror`. Il ne réimplémente aucune logique d'extraction de `yt-dlp` — `yt-dlp` sait déjà parler à des centaines de sites vidéo ; ce crate se contente d'envelopper son invocation dans une interface Rust cohérente.
 
-## Périmètre v0.1 (honnête, pas aspirationnel)
+## Périmètre (honnête, pas aspirationnel)
 
-Trois fonctions, volontairement :
+Quatre fonctions, volontairement :
 
 - `fetch_metadata(url: &str) -> Result<VideoMetadata, YoutubeHelperError>` — lance `yt-dlp --dump-json <url>` et parse le résultat dans une structure `VideoMetadata` (`id`, `title`, `duration`, `uploader`, `channel`, `webpage_url`, `description`, `upload_date`, `view_count`, `like_count`, `thumbnail`). La présence de chaque champ a été vérifiée à la main sur un vrai appel `yt-dlp --dump-json`, pas devinée depuis la documentation.
 - `download_audio(url: &str, out_dir: &Path) -> Result<PathBuf, YoutubeHelperError>` — lance `yt-dlp -x --audio-format wav <url>` avec `--print after_move:filepath`, si bien que le chemin renvoyé est exactement celui que `yt-dlp` lui-même rapporte comme fichier final, pas une reconstruction devinée depuis le gabarit de sortie.
+- `download_audio_with_options(url, out_dir, &DownloadOptions)` — la même chose, dans l'`AudioFormat` de votre choix : `Wav` (par défaut), `Mp3`, `M4a`, `Opus`, `Flac` ou `Best` (le format d'origine, sans réencodage). Le WAV convient à un décodeur et pas à ce qui doit voyager : environ dix fois la taille de l'original, et réencoder une source déjà compressée y perd de la qualité sans en regagner.
 - `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — lance `yt-dlp --get-url -f bestaudio/best <url>` et rend l'adresse signée du média, sans rien télécharger.
 
 **Télécharger ou résoudre ? Se tromper échoue d'une façon difficile à lire.** Télécharger quand le média finit et qu'on veut un fichier. Résoudre quand on veut lire au fil de l'eau, et surtout quand le média peut ne pas finir : **une émission en direct ne finit jamais de se télécharger**, donc `download_audio` sur un direct ne rend jamais la main, là où `resolve_media_url` rend un manifeste HLS qu'un lecteur suit aussi longtemps que l'émission dure. L'adresse rendue est signée et périme en quelques heures : la résoudre juste avant de s'en servir, et ne jamais la garder.
@@ -31,7 +32,7 @@ C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas d
 
 ## Prérequis
 
-`yt-dlp` doit être installé et accessible sur le `PATH` (ou via la variable d'environnement `YOUTUBE_HELPER_YTDLP_BIN`, qui sert justement à la suite de tests pour pointer vers un binaire inexistant afin d'exercer `BinaryNotFound` sans toucher à une vraie installation).
+Rust 1.85 ou plus récent. `yt-dlp` doit être installé et accessible sur le `PATH` (ou via la variable d'environnement `YOUTUBE_HELPER_YTDLP_BIN`, qui sert justement à la suite de tests pour pointer vers un binaire inexistant afin d'exercer `BinaryNotFound` sans toucher à une vraie installation).
 
 ```bash
 brew install yt-dlp       # macOS
@@ -84,12 +85,12 @@ La plupart des branches d'erreur (`CommandFailed`, `OutputFileNotFound`, le chem
 
 ## État du projet
 
-Ce qui compte ici, c'est le taux de couverture réel, pas le nombre de commits. Mesuré avec [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov) :
+Ce qui compte ici, c'est le taux de couverture réel, pas le nombre de commits. Mesuré avec [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov), remesuré le 2026-10-02 pour la 0.1.3 :
 
 | Suite | Lignes | Fonctions | Régions |
 |---|---|---|---|
-| `cargo test` (sans réseau, sûr pour la CI) | 89,66 % (286/319) | 64,44 % (29/45) | 84,01 % (452/538) |
-| `cargo test -- --include-ignored` (avec les 2 tests réseau) | 97,49 % (311/319) | 88,89 % (40/45) | 94,24 % (507/538) |
+| `cargo test` (sans réseau, sûr pour la CI) | 89,98 % (467/519) | 70,15 % (47/67) | 85,13 % (624/733) |
+| `cargo test -- --include-ignored` (avec les 3 tests réseau) | 97,11 % (504/519) | 77,61 % (52/67) | 93,32 % (684/733) |
 
 Les lignes non couvertes même avec les tests réseau sont concentrées dans `download.rs` (quelques branches d'erreur `OutputFileNotFound` qui nécessiteraient un `yt-dlp` réel produisant un chemin absent d'une manière que le faux script ne reproduit pas exactement) — le détail est visible avec `cargo llvm-cov report --show-missing-lines`.
 
