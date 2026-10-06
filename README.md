@@ -6,6 +6,31 @@
 
 Rust rewrite of the core promise of [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper), not a line-by-line port of its code. `youtube-helper-rs` shells out to the [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) binary via `std::process::Command` and turns its output into typed Rust values and a `thiserror` error enum. It does not reimplement any of `yt-dlp`'s extraction logic — `yt-dlp` already knows how to talk to hundreds of video sites; this crate just wraps one consistent Rust interface around invoking it.
 
+## The `yt-dlp` binary is provisioned, not merely required
+
+Every function here ends in a call to `yt-dlp`. A crate whose entire purpose
+depends on a binary should not merely say so in a README: the failure lands far
+from its cause — in a service, it surfaces weeks after deployment as a
+transcription error, and reads as "the product is broken" rather than "the image
+is incomplete". So the binary is resolved, in this order, the first time one is
+needed:
+
+1. `YOUTUBE_HELPER_YTDLP_BIN` — an explicit choice always wins.
+2. `yt-dlp` on `PATH` — the normal case.
+3. A copy fetched earlier, under the user cache directory.
+4. Otherwise the official standalone build for the platform is downloaded from
+   the `yt-dlp` GitHub release, made executable, and used.
+
+Nothing is ever installed system-wide, nothing is written outside the user
+cache, and a `yt-dlp` already on `PATH` is never upgraded — its version is the
+operator's choice. `YOUTUBE_HELPER_NO_AUTO_INSTALL=1` turns step 4 off and
+restores the plain `BinaryNotFound` error; `YOUTUBE_HELPER_CACHE_DIR` moves the
+cache.
+
+The download is a real cost paid once per machine. The honest way to avoid it is
+to install `yt-dlp` properly (`pip install yt-dlp`, a distribution package, or
+the standalone build on `PATH`): step 4 is a floor, not a plan.
+
 ## v0.1 scope (honest, not aspirational)
 
 Four functions, on purpose:
@@ -23,7 +48,7 @@ That's it for v0.1. No video download, no thumbnail download, no stream catalog,
 
 `YoutubeHelperError` (via `thiserror`) gives each failure mode its own variant instead of one opaque error:
 
-- `BinaryNotFound` — `yt-dlp` is not on `PATH` (or wherever `YOUTUBE_HELPER_YTDLP_BIN` points).
+- `BinaryNotFound` — `yt-dlp` could not be provisioned: it is not on `PATH`, no copy was fetched earlier, and the automatic download was either refused (`YOUTUBE_HELPER_NO_AUTO_INSTALL=1`) or impossible.
 - `InvalidUrl` — the URL is empty/malformed, or `yt-dlp` itself rejects it as unsupported.
 - `CommandFailed` — `yt-dlp` ran but exited non-zero for any other reason (network failure, geo-block, age restriction, removed video, rate limiting, ...). Carries the raw stderr.
 - `JsonParse` — `yt-dlp --dump-json` returned something that didn't parse as the expected shape.

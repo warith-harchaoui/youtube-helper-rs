@@ -7,12 +7,22 @@
 use crate::error::{Result, YoutubeHelperError};
 use std::process::{Command, Output, Stdio};
 
-/// Name (or path) of the `yt-dlp` binary to invoke. Overridable via the
-/// `YOUTUBE_HELPER_YTDLP_BIN` environment variable, primarily so tests can
-/// point at a binary that does not exist to exercise [`YoutubeHelperError::BinaryNotFound`]
-/// deterministically without touching a real install.
+/// Name (or path) of the `yt-dlp` binary to invoke.
+///
+/// `YOUTUBE_HELPER_YTDLP_BIN` still wins, and still lets a test point at a
+/// binary that does not exist to exercise
+/// [`YoutubeHelperError::BinaryNotFound`] deterministically. Without it, the
+/// answer now comes from [`crate::provision::ytdlp`], which finds `yt-dlp` on
+/// `PATH` or fetches the official standalone build — see that module for why a
+/// crate whose every function needs a binary should not merely document it.
+///
+/// A provisioning failure falls back to the bare name rather than being
+/// propagated here: the spawn that follows produces the error the caller
+/// already knows how to read, with the real reason attached to it.
 pub(crate) fn binary_name() -> String {
-    std::env::var("YOUTUBE_HELPER_YTDLP_BIN").unwrap_or_else(|_| "yt-dlp".to_string())
+    crate::provision::ytdlp()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| "yt-dlp".to_string())
 }
 
 /// Runs `yt-dlp` with the given arguments and returns the raw output,
