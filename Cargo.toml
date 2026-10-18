@@ -5,8 +5,11 @@ edition = "2021"
 # Verified, not guessed: `cargo test --all` passes on 1.85.0. Floor set by the oldest toolchain this crate is tested against.
 rust-version = "1.85"
 description = "Rust wrapper around the yt-dlp binary: video metadata and audio downloads, no reimplementation of yt-dlp itself."
+authors = ["Warith HARCHAOUI <warithmetics@deraison.ai>"]
 license = "BSD-3-Clause"
 repository = "https://github.com/warith-harchaoui/youtube-helper-rs"
+homepage = "https://deraison.ai/ai-helpers"
+documentation = "https://docs.rs/youtube-helper-rs"
 readme = "README.md"
 keywords = ["youtube", "yt-dlp", "video", "audio", "download"]
 categories = ["multimedia", "api-bindings"]
