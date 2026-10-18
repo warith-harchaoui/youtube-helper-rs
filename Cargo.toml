@@ -14,13 +14,21 @@ readme = "README.md"
 keywords = ["youtube", "yt-dlp", "video", "audio", "download"]
 categories = ["multimedia", "api-bindings"]
 
+[features]
+# On by default so `cargo install youtube-helper-rs` produces the binary. Library users
+# who want clap out of their dependency graph depend on this crate with
+# `default-features = false`.
+default = ["cli"]
+cli = ["dep:clap"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-# The CLI front end. `derive` keeps the argument definitions next to the types
-# they fill, the way md2star-rs already does it.
-clap = { version = "4", features = ["derive"] }
+# CLI-only, behind the `cli` feature below: a library consumer should not pay
+# for an argument parser it never calls. `derive` keeps the argument
+# definitions next to the types they fill.
+clap = { version = "4", features = ["derive"], optional = true }
 
 [dev-dependencies]
 tempfile = "3"
@@ -31,3 +39,4 @@ tempfile = "3"
 # order decide which one runs.
 name = "youtube-helper-rs"
 path = "src/main.rs"
+required-features = ["cli"]
