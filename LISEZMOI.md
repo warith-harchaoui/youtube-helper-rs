@@ -72,6 +72,43 @@ fn main() -> Result<(), youtube_helper_rs::YoutubeHelperError> {
 }
 ```
 
+## Ligne de commande
+
+`cargo install youtube-helper-rs` installe aussi un binaire
+`youtube-helper-rs` — nommé d'après la crate et non d'après la commande
+`youtube-helper` du jumeau Python, pour que les deux cohabitent sur un même
+`PATH` sans que l'un masque l'autre en silence.
+
+```bash
+youtube-helper-rs metadata https://www.youtube.com/watch?v=... --pretty
+youtube-helper-rs resolve  https://www.youtube.com/watch?v=...
+youtube-helper-rs download https://www.youtube.com/watch?v=... -o out -f mp3
+```
+
+En cas de succès, exactement une ligne sur la sortie standard et un code de
+retour `0` ; en cas d'échec, une ligne sur la sortie d'erreur préfixée
+`youtube-helper-rs: ` et un code `1`. C'est cette séparation qui le rend sûr
+dans un tube : `url=$(youtube-helper-rs resolve "$page")` capture l'URL et rien
+d'autre.
+
+Toutes les options et tous les modes d'échec :
+[`skills/youtube-helper-rs/references/cli-reference.md`](skills/youtube-helper-rs/references/cli-reference.md).
+
+## Skill d'agent
+
+`skills/youtube-helper-rs/` empaquette cette crate en **Claude Skill** et en
+**skill OpenCode**, pour qu'un agent la découvre et l'utilise pour le compte de
+l'utilisateur. L'installation pour les deux hôtes est dans
+[`skills/README.md`](skills/README.md).
+
+Son catalogue de déclencheurs est imposé, pas décoratif :
+[`TRIGGERS.md`](TRIGGERS.md) est le catalogue destiné aux humains,
+`references/triggers.md` en est le miroir destiné à l'agent, et
+`tests/skill.rs` fait échouer `cargo test` — donc le hook de pré-push — si les
+deux divergent, si la `description` du skill dépasse le plafond publié de 1024
+caractères, si son `name` cesse de correspondre à son dossier ou s'il pointe
+vers une référence qui n'existe plus.
+
 ## Tests
 
 ```bash

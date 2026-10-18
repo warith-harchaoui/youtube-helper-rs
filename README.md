@@ -97,6 +97,38 @@ fn main() -> Result<(), youtube_helper_rs::YoutubeHelperError> {
 }
 ```
 
+## Command line
+
+`cargo install youtube-helper-rs` also installs a `youtube-helper-rs` binary —
+named after the crate, not after the Python twin's `youtube-helper`, so the two
+coexist on one `PATH` without either silently shadowing the other.
+
+```bash
+youtube-helper-rs metadata https://www.youtube.com/watch?v=... --pretty
+youtube-helper-rs resolve  https://www.youtube.com/watch?v=...
+youtube-helper-rs download https://www.youtube.com/watch?v=... -o out -f mp3
+```
+
+Success prints exactly one line on stdout and exits `0`; failure prints one
+line on stderr, prefixed `youtube-helper-rs: `, and exits `1`. That split is
+what makes it safe in a pipeline:
+`url=$(youtube-helper-rs resolve "$page")` captures the URL and nothing else.
+
+Every flag and every failure mode: [`skills/youtube-helper-rs/references/cli-reference.md`](skills/youtube-helper-rs/references/cli-reference.md).
+
+## Agent skill
+
+`skills/youtube-helper-rs/` packages this crate as a **Claude Skill** and an
+**OpenCode skill**, so an agent can discover it and use it on the user's behalf.
+Installation for both hosts is in [`skills/README.md`](skills/README.md).
+
+Its trigger catalogue is enforced, not decorative: [`TRIGGERS.md`](TRIGGERS.md)
+is the user-facing catalogue, `references/triggers.md` is its agent-facing
+mirror, and `tests/skill.rs` fails `cargo test` — and therefore the pre-push
+hook — if the two drift apart, if the skill's `description` exceeds the
+published 1024-character cap, if its `name` stops matching its folder, or if it
+points at a reference that no longer exists.
+
 ## Testing
 
 ```bash

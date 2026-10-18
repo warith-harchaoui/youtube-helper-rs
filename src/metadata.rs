@@ -2,7 +2,7 @@
 
 use crate::error::{Result, YoutubeHelperError};
 use crate::ytdlp;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A subset of the fields `yt-dlp --dump-json` actually emits, verified by
 /// hand against a real invocation against a public YouTube video. `yt-dlp`
@@ -10,7 +10,7 @@ use serde::Deserialize;
 /// only claims the ones this crate promises to expose. Unknown fields in the
 /// JSON are ignored rather than rejected, since the exact field set varies
 /// by extractor (YouTube vs. Vimeo vs. DailyMotion, ...).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VideoMetadata {
     /// Extractor-assigned video id (e.g. the YouTube `v=` value).
     pub id: String,
