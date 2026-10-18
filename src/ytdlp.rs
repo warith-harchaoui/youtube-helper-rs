@@ -25,12 +25,38 @@ pub(crate) fn binary_name() -> String {
         .unwrap_or_else(|_| "yt-dlp".to_string())
 }
 
+/// Seconds a single `yt-dlp` socket read may stall before it gives up.
+///
+/// `yt-dlp` applies no timeout unless asked, so a connection the remote has
+/// half-closed is waited on forever and the calling process simply stops making
+/// progress. The Python twin hit exactly this: a caption fetch sat at 0 % CPU for
+/// nine minutes with its sockets in `CLOSE_WAIT` and had to be killed. Nothing
+/// about that failure is language-specific -- this crate drives the same binary
+/// over the same sockets -- so it is bounded here too, and under the same
+/// environment variable.
+///
+/// 30 s is far past any healthy response while still failing fast enough that a
+/// caller can retry.
+fn socket_timeout() -> String {
+    std::env::var("YOUTUBE_HELPER_SOCKET_TIMEOUT")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .unwrap_or_else(|| "30".to_string())
+}
+
 /// Runs `yt-dlp` with the given arguments and returns the raw output,
 /// mapping a spawn failure caused by a missing binary to
 /// [`YoutubeHelperError::BinaryNotFound`].
+///
+/// Every call in the crate funnels through here, which is why the socket bound
+/// lives here rather than at each call site: one place to get right, and no way
+/// for a new caller to forget it.
 pub(crate) fn run(args: &[&str]) -> Result<Output> {
     let binary = binary_name();
+    let timeout = socket_timeout();
     let output = Command::new(&binary)
+        .arg("--socket-timeout")
+        .arg(&timeout)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -143,5 +169,57 @@ mod tests {
             std::env::remove_var("YOUTUBE_HELPER_YTDLP_BIN");
         }
         assert!(matches!(result, Err(YoutubeHelperError::Io(_))));
+    }
+
+    #[test]
+    fn socket_timeout_defaults_to_a_bounded_value() {
+        // The point is that it is never unbounded: yt-dlp left to itself waits
+        // forever on a half-closed socket.
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        // SAFETY: serialized via `ENV_MUTEX`.
+        unsafe {
+            std::env::remove_var("YOUTUBE_HELPER_SOCKET_TIMEOUT");
+        }
+        let value = socket_timeout();
+        assert!(
+            value.parse::<f64>().is_ok_and(|v| v > 0.0),
+            "default socket timeout must be a positive number, got {value:?}"
+        );
+    }
+
+    #[test]
+    fn socket_timeout_is_overridable() {
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        // SAFETY: serialized via `ENV_MUTEX`.
+        unsafe {
+            std::env::set_var("YOUTUBE_HELPER_SOCKET_TIMEOUT", "120");
+        }
+        let value = socket_timeout();
+        unsafe {
+            std::env::remove_var("YOUTUBE_HELPER_SOCKET_TIMEOUT");
+        }
+        assert_eq!(value, "120");
+    }
+
+    #[test]
+    fn a_blank_override_falls_back_to_the_default() {
+        // An exported-but-empty variable is a common shell accident; it must not
+        // turn into `--socket-timeout ""`, which yt-dlp rejects.
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        // SAFETY: serialized via `ENV_MUTEX`.
+        unsafe {
+            std::env::set_var("YOUTUBE_HELPER_SOCKET_TIMEOUT", "   ");
+        }
+        let value = socket_timeout();
+        unsafe {
+            std::env::remove_var("YOUTUBE_HELPER_SOCKET_TIMEOUT");
+        }
+        assert!(value.parse::<f64>().is_ok_and(|v| v > 0.0));
     }
 }

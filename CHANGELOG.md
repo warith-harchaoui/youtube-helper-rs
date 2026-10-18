@@ -4,6 +4,37 @@ All notable changes to `youtube-helper-rs` are documented here. The format follo
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] — 2026-10-18
+
+### Added
+- **`yt-dlp` is provisioned, not merely required.** A crate whose every function shells
+  out to a binary should not leave finding it to the reader. `provision::ytdlp` looks on
+  `PATH` first and otherwise fetches the official standalone build, so the documented
+  prerequisite stops being a prerequisite.
+- **A CLI (`youtube-helper-rs`)**, behind a `cli` feature that is on by default. Named
+  after the crate rather than after the Python twin: the two are meant to coexist on one
+  machine, and identical names would let `PATH` order decide which one runs. Library
+  consumers drop `clap` with `default-features = false`.
+- **`TRIGGERS.md` and an enforced agent skill** (`skills/`), with `tests/skill.rs` as the
+  portal that fails when the catalogue and the skill description drift apart.
+
+### Fixed
+- **A stalled `yt-dlp` read could hang the caller forever.** `yt-dlp` applies no socket
+  timeout unless asked, so a connection the remote has half-closed is waited on
+  indefinitely -- the process just stops making progress, at 0 % CPU, until something
+  kills it. The Python twin was observed doing exactly that for nine minutes, twice,
+  with its sockets in `CLOSE_WAIT`; nothing about the failure is language-specific, since
+  this crate drives the same binary over the same sockets.
+
+  Every invocation in the crate funnels through `ytdlp::run`, so the bound lives there
+  rather than at each call site: one place to get right, and no way for a future caller
+  to forget it. Override with `YOUTUBE_HELPER_SOCKET_TIMEOUT`, the same variable the
+  Python package reads.
+
+### Changed
+- **crates.io metadata completed** — `authors`, `homepage` and `documentation` were
+  inconsistent or absent.
+
 ## [0.1.3] — 2026-10-02
 
 ### Added
