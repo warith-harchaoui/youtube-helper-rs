@@ -4,6 +4,27 @@ All notable changes to `youtube-helper-rs` are documented here. The format follo
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.5] — 2026-10-19
+
+### Fixed
+- **The yt-dlp binary was fetched with no timeout.** Provisioning tried
+  `curl -fsSL --retry 3` then `wget -q -O`. curl applies no total-transfer limit
+  by default, so a stalled connection is waited on forever — and `--retry 3`
+  never fires, because a retry only happens once an attempt *returns*. wget does
+  give up, but its default read timeout is 900 s, which to anyone watching is
+  indistinguishable from a hang.
+
+  The blast radius is wider than the function. `binary_name()` calls into
+  provisioning lazily on the first yt-dlp invocation, so an unbounded fetch here
+  hangs the whole crate at first use, not just this call. Now
+  `--connect-timeout 20 --max-time 300` for curl and
+  `--connect-timeout=20 --read-timeout=60 --tries=3` for wget: 300 s tolerates a
+  slow link for a ~30 MB asset while still being a bound.
+
+  Same root cause as 0.1.4's `--socket-timeout`, one layer further out — found
+  by auditing the Python twin, whose own 2.4.0 fix had missed three call sites
+  for a structurally similar reason.
+
 ## [0.1.4] — 2026-10-18
 
 ### Added

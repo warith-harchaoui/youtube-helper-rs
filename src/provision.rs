@@ -156,11 +156,27 @@ fn telecharger() -> Result<PathBuf> {
     let url = format!("{RELEASE_BASE}/{asset}");
 
     let mut derniere_erreur = String::new();
+    // Both downloaders are bounded explicitly.
+    //
+    // curl applies no total-transfer limit by default, so a stalled connection
+    // is waited on forever -- and `--retry 3` never helps, because a retry only
+    // happens after an attempt *returns*. wget does eventually give up, but its
+    // default read timeout is 900 s, which is indistinguishable from a hang to
+    // anyone watching. Since `binary_name()` calls into provisioning lazily on
+    // the first yt-dlp invocation, an unbounded fetch here hangs the whole
+    // crate at first use, not just this function.
+    //
+    // 20 s to connect, 300 s for the whole transfer: the asset is a ~30 MB
+    // binary, so 300 s tolerates a slow link while still being a bound.
     let tentatives: [(&str, Vec<String>); 2] = [
         (
             "curl",
             vec![
                 "-fsSL".into(),
+                "--connect-timeout".into(),
+                "20".into(),
+                "--max-time".into(),
+                "300".into(),
                 "--retry".into(),
                 "3".into(),
                 "-o".into(),
@@ -172,6 +188,9 @@ fn telecharger() -> Result<PathBuf> {
             "wget",
             vec![
                 "-q".into(),
+                "--connect-timeout=20".into(),
+                "--read-timeout=60".into(),
+                "--tries=3".into(),
                 "-O".into(),
                 partiel.display().to_string(),
                 url.clone(),

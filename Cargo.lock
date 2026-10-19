@@ -344,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "youtube-helper-rs"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap",
  "serde",
