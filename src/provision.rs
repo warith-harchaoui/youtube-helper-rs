@@ -402,6 +402,21 @@ mod tests {
 
     #[test]
     fn le_cache_ne_sort_pas_du_dossier_de_lutilisateur() {
+        // Ce test LIT l'environnement (`dossier_de_cache` consulte
+        // CACHE_DIR_ENV, HOME et XDG_CACHE_HOME), et les tests des quatre
+        // autres modules y ÉCRIVENT par `set_var` en parallèle, sur d'autres
+        // fils. `set_var` est `unsafe` précisément pour ça : poser une
+        // variable peut réallouer le bloc `environ`, et un `getenv` concurrent
+        // lit alors de la mémoire libérée.
+        //
+        // Un verrou qui ne couvre que les écrivains ne protège rien. Les
+        // lecteurs doivent prendre le même. Sans cette ligne, la suite passait
+        // 25 fois sur 25 en local et échouait environ une fois sur trois sur
+        // un runner Ubuntu chargé — toujours ailleurs, ce qui est la signature
+        // d'une course et non d'un test faux.
+        let _guard = crate::ENV_MUTEX
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let d = dossier_de_cache();
         assert!(
             d.ends_with("youtube-helper-rs/bin")

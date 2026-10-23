@@ -4,6 +4,32 @@ All notable changes to `youtube-helper-rs` are documented here. The format follo
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] - 2026-10-23
+
+### Fixed
+
+- **The test suite raced on the process environment, and CI was intermittently
+  red because of it.** Four modules set `YOUTUBE_HELPER_YTDLP_BIN` under
+  `ENV_MUTEX`; `provision.rs`'s cache-directory test read
+  `CACHE_DIR_ENV`/`HOME`/`XDG_CACHE_HOME` **without taking it**.
+
+  `std::env::set_var` is `unsafe` for exactly this reason: setting a variable
+  may reallocate the `environ` block while another thread sits inside
+  `getenv`, which then reads freed memory. A lock held only by writers
+  protects nothing.
+
+  The symptom was not a wrong value but an *unrelated* test failing: the suite
+  passed 25 runs out of 25 locally and failed roughly one in three on GitHub's
+  Ubuntu runner, each time in `resolve::tests::trailing_blank_lines_do_not_
+  become_the_answer`, which was innocent. The same commit has both a green and
+  a red run one minute apart, which is what finally identified it as a race
+  rather than a broken assertion.
+
+  The reader now takes the lock, and `ENV_MUTEX`'s own documentation states
+  that readers must — because the next person to add a test that calls
+  `std::env::var` will otherwise reintroduce this, and the failure will again
+  point at the wrong module.
+
 ## [0.1.5] — 2026-10-19
 
 ### Fixed

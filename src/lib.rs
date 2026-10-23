@@ -40,8 +40,20 @@ pub use error::{Result, YoutubeHelperError};
 pub use metadata::{fetch_metadata, VideoMetadata};
 pub use resolve::resolve_media_url;
 
-/// Serializes tests (across modules) that mutate the process-wide
-/// `YOUTUBE_HELPER_YTDLP_BIN` environment variable, since `cargo test` runs
-/// tests concurrently on multiple threads within one process by default.
+/// Serializes every test that touches the process environment, since
+/// `cargo test` runs tests concurrently on threads within one process.
+///
+/// **Readers must take this too, not only writers.** `std::env::set_var` is
+/// `unsafe` precisely because setting a variable may reallocate the `environ`
+/// block while another thread is inside `getenv`, which then reads freed
+/// memory. A lock held only by the writers leaves every concurrent
+/// `std::env::var` racing, and the symptom is not a wrong value — it is an
+/// unrelated test failing, rarely, on a loaded machine.
+///
+/// That is exactly what happened: `provision.rs`'s cache-directory test read
+/// `CACHE_DIR_ENV`/`HOME`/`XDG_CACHE_HOME` without this lock while four other
+/// modules wrote `YOUTUBE_HELPER_YTDLP_BIN` under it. The suite passed 25/25
+/// locally and failed roughly one run in three on GitHub's Ubuntu runner,
+/// each time in `resolve`, which was innocent.
 #[cfg(test)]
 pub(crate) static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
