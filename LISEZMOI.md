@@ -12,10 +12,10 @@ Quatre fonctions, volontairement :
 
 - `fetch_metadata(url: &str) -> Result<VideoMetadata, YoutubeHelperError>` — lance `yt-dlp --dump-json <url>` et parse le résultat dans une structure `VideoMetadata` (`id`, `title`, `duration`, `uploader`, `channel`, `webpage_url`, `description`, `upload_date`, `view_count`, `like_count`, `thumbnail`). La présence de chaque champ a été vérifiée à la main sur un vrai appel `yt-dlp --dump-json`, pas devinée depuis la documentation.
 - `download_audio(url: &str, out_dir: &Path) -> Result<PathBuf, YoutubeHelperError>` — lance `yt-dlp -x --audio-format wav <url>` avec `--print after_move:filepath`, si bien que le chemin renvoyé est exactement celui que `yt-dlp` lui-même rapporte comme fichier final, pas une reconstruction devinée depuis le gabarit de sortie.
-- `download_audio_with_options(url, out_dir, &DownloadOptions)` — la même chose, dans l'`AudioFormat` de votre choix : `Wav` (par défaut), `Mp3`, `M4a`, `Opus`, `Flac` ou `Best` (le format d'origine, sans réencodage). Le WAV convient à un décodeur et pas à ce qui doit voyager : environ dix fois la taille de l'original, et réencoder une source déjà compressée y perd de la qualité sans en regagner.
+- `download_audio_with_options(url, out_dir, &DownloadOptions)` — la même chose, dans l'`AudioFormat` de votre choix : `Wav` (par défaut), `Mp3`, `M4a`, `Opus`, `Flac` ou `Best` (le format d'origine, sans réencodage). Le WAV convient à un décodeur et pas à ce qui doit voyager : environ dix fois la taille de l'original et réencoder une source déjà compressée y perd de la qualité sans en regagner.
 - `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — lance `yt-dlp --get-url -f bestaudio/best <url>` et rend l'adresse signée du média, sans rien télécharger.
 
-**Télécharger ou résoudre ? Se tromper échoue d'une façon difficile à lire.** Télécharger quand le média finit et qu'on veut un fichier. Résoudre quand on veut lire au fil de l'eau, et surtout quand le média peut ne pas finir : **une émission en direct ne finit jamais de se télécharger**, donc `download_audio` sur un direct ne rend jamais la main, là où `resolve_media_url` rend un manifeste HLS qu'un lecteur suit aussi longtemps que l'émission dure. L'adresse rendue est signée et périme en quelques heures : la résoudre juste avant de s'en servir, et ne jamais la garder.
+**Télécharger ou résoudre ? Se tromper échoue d'une façon difficile à lire.** Télécharger quand le média finit et qu'on veut un fichier. Résoudre quand on veut lire au fil de l'eau et surtout quand le média peut ne pas finir : **une émission en direct ne finit jamais de se télécharger**, donc `download_audio` sur un direct ne rend jamais la main, là où `resolve_media_url` rend un manifeste HLS qu'un lecteur suit aussi longtemps que l'émission dure. L'adresse rendue est signée et périme en quelques heures : la résoudre juste avant de s'en servir et ne jamais la garder.
 
 C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas de catalogue de flux, pas de métadonnées de chaîne/engagement, pas de sous-titres, pas de commentaires, pas de post-traitement ffmpeg, pas de repli Tor — tout cela existe dans l'original Python et reste volontairement hors périmètre ici, tant qu'aucun usage réel ne le réclame.
 
@@ -24,11 +24,15 @@ C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas d
 `YoutubeHelperError` (via `thiserror`) donne à chaque mode d'échec sa propre variante plutôt qu'une erreur opaque unique :
 
 - `BinaryNotFound` — `yt-dlp` n'est pas sur le `PATH` (ni à l'endroit pointé par `YOUTUBE_HELPER_YTDLP_BIN`).
-- `InvalidUrl` — l'URL est vide/malformée, ou `yt-dlp` lui-même la rejette comme non supportée.
+- `InvalidUrl` — l'URL est vide/malformée ou `yt-dlp` lui-même la rejette comme non supportée.
 - `CommandFailed` — `yt-dlp` s'est exécuté mais a terminé en erreur pour une autre raison (échec réseau, restriction géographique, restriction d'âge, vidéo supprimée, limitation de débit, ...). Porte la sortie d'erreur brute.
 - `JsonParse` — `yt-dlp --dump-json` a renvoyé une sortie qui ne correspond pas à la forme attendue.
 - `OutputFileNotFound` — `yt-dlp` a rapporté un succès mais le fichier annoncé n'existe pas ensuite.
 - `Io` — tout le reste (par exemple, l'échec de création du répertoire de sortie).
+
+## Comment ça marche
+
+![Comment youtube-helper-rs fonctionne : une URL en entrée, des valeurs Rust typées en sortie, le binaire yt-dlp approvisionné plutôt que seulement exigé](https://raw.githubusercontent.com/warith-harchaoui/youtube-helper-rs/master/assets/diagrams/comment-ca-marche.png)
 
 ## Prérequis
 
@@ -56,7 +60,7 @@ fn main() -> Result<(), youtube_helper_rs::YoutubeHelperError> {
     let meta = fetch_metadata("https://www.youtube.com/watch?v=jNQXAC9IVRw")?;
     println!("{} ({:?}s) par {:?}", meta.title, meta.duration, meta.uploader);
 
-    // Un média qui finit, et dont on veut un fichier :
+    // Un média qui finit et dont on veut un fichier :
     let audio_path = download_audio(
         "https://www.youtube.com/watch?v=jNQXAC9IVRw",
         Path::new("./out"),
@@ -155,10 +159,10 @@ cargo test --all
 scripts/check-fresh-resolve.sh   # compile sans Cargo.lock, comme un consommateur en aval
 ```
 
-Le dernier existe parce que les trois autres, et la CI, compilent tous contre le
+Le dernier existe parce que les trois autres et la CI, compilent tous contre le
 `Cargo.lock` commité — que personne n'utilise en aval du crate publié. Un intervalle de
 dépendance devenu mauvais reste vert ici tout en cassant chaque `cargo add` / `cargo
-install` neuf, et `cargo publish --dry-run` ne le voit pas non plus (il vérifie avec le
+install` neuf et `cargo publish --dry-run` ne le voit pas non plus (il vérifie avec le
 même lock). La CI lance ce contrôle une fois, sous Linux.
 
 ## Projets liés

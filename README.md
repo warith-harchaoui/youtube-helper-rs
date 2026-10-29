@@ -55,6 +55,10 @@ That's it for v0.1. No video download, no thumbnail download, no stream catalog,
 - `OutputFileNotFound` — `yt-dlp` reported success but the file it printed doesn't exist afterwards.
 - `Io` — anything else (e.g. failing to create the output directory).
 
+## How it works
+
+![How youtube-helper-rs works: a URL in, typed Rust values out, with the yt-dlp binary provisioned rather than merely required](https://raw.githubusercontent.com/warith-harchaoui/youtube-helper-rs/master/assets/diagrams/how-it-works.png)
+
 ## Requirements
 
 Rust 1.85 or newer. `yt-dlp` must be installed and reachable on `PATH` (or via the `YOUTUBE_HELPER_YTDLP_BIN` environment variable, which is how the test suite points at a nonexistent binary to exercise `BinaryNotFound` without touching a real install).
