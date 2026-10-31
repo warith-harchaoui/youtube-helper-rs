@@ -25,6 +25,9 @@ jobs:
   check:
     name: fmt + clippy + test
     runs-on: ubuntu-latest
+    # A hung job must not ride GitHub's 6-hour default: this one takes
+    # well under two minutes, so anything near the ceiling is a hang.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
