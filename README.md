@@ -40,7 +40,12 @@ Four functions, on purpose:
 - `download_audio_with_options(url, out_dir, &DownloadOptions)` — the same, in the `AudioFormat` of your choice: `Wav` (the default), `Mp3`, `M4a`, `Opus`, `Flac`, or `Best` (the source's own format, no re-encoding). WAV is right for a decoder and wrong for anything that has to travel — roughly ten times the size, and re-encoding a lossy source to it loses quality while gaining none back.
 - `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — runs `yt-dlp --get-url -f bestaudio/best <url>` and returns the signed media address, without downloading anything.
 
-**Download or resolve? The wrong choice fails in a way that is hard to read.** Download when the media ends and you want a file. Resolve when you want to stream, and especially when the media may not end: a live broadcast never finishes downloading, so `download_audio` on one blocks forever, while `resolve_media_url` returns an HLS manifest a player follows for as long as the broadcast lasts. The resolved URL is signed and expires within hours — resolve immediately before use, never persist it.
+**Download or resolve? The wrong choice fails in a way that is hard to read.**
+
+- **Download** when the media ends and you want a file.
+- **Resolve** when you want to stream — and especially when the media may not end. A live broadcast never finishes downloading, so `download_audio` on one blocks forever, while `resolve_media_url` returns an HLS manifest a player follows for as long as the broadcast lasts.
+
+The resolved URL is signed and expires within hours: resolve immediately before use, and never persist it.
 
 That's it for v0.1. No video download, no thumbnail download, no stream catalog, no channel/engagement metadata, no subtitles, no comments, no ffmpeg post-processing, no Tor fallback — all present in the Python original, all deliberately out of scope here until there's a real consumer that needs them.
 
@@ -140,7 +145,11 @@ cargo test              # unit tests + URL-validation + missing-binary tests, no
 cargo test -- --ignored # real network tests against a stable public YouTube video
 ```
 
-The `--ignored` tests are skipped by default because they touch the network. Known limitation as of this writing: `fetch_metadata` (metadata only, no media stream) works reliably; the `download_audio` ignored test can fail with an `HTTP 403 Forbidden` from `yt-dlp` in sandboxed/CI-like environments without browser cookies or a PO-token provider configured — this is YouTube-side anti-bot enforcement on the media CDN, a known and widely reported `yt-dlp` limitation, not a bug in this wrapper (the resulting `CommandFailed` error is exactly what this crate is supposed to surface in that case).
+The `--ignored` tests are skipped by default because they touch the network.
+
+Known limitation as of this writing: `fetch_metadata` (metadata only, no media stream) works reliably, but the `download_audio` ignored test can fail with an `HTTP 403 Forbidden` from `yt-dlp` in sandboxed or CI-like environments without browser cookies or a PO-token provider configured.
+
+That is YouTube-side anti-bot enforcement on the media CDN — a known and widely reported `yt-dlp` limitation, not a bug in this wrapper. The resulting `CommandFailed` error is exactly what this crate is supposed to surface in that case.
 
 Most error branches (`CommandFailed`, `OutputFileNotFound`, the `InvalidUrl` message-detection path, non-`NotFound` spawn errors, malformed/empty `yt-dlp` stdout) are exercised deterministically, without the network, by pointing `YOUTUBE_HELPER_YTDLP_BIN` at small fake shell scripts written on the fly (`src/test_support.rs`) — that's most of `cargo test`'s test count, not the two `#[ignore]`d ones.
 

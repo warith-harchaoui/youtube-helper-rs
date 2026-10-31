@@ -15,7 +15,12 @@ Quatre fonctions, volontairement :
 - `download_audio_with_options(url, out_dir, &DownloadOptions)` — la même chose, dans l'`AudioFormat` de votre choix : `Wav` (par défaut), `Mp3`, `M4a`, `Opus`, `Flac` ou `Best` (le format d'origine, sans réencodage). Le WAV convient à un décodeur et pas à ce qui doit voyager : environ dix fois la taille de l'original et réencoder une source déjà compressée y perd de la qualité sans en regagner.
 - `resolve_media_url(url: &str) -> Result<String, YoutubeHelperError>` — lance `yt-dlp --get-url -f bestaudio/best <url>` et rend l'adresse signée du média, sans rien télécharger.
 
-**Télécharger ou résoudre ? Se tromper échoue d'une façon difficile à lire.** Télécharger quand le média finit et qu'on veut un fichier. Résoudre quand on veut lire au fil de l'eau et surtout quand le média peut ne pas finir : **une émission en direct ne finit jamais de se télécharger**, donc `download_audio` sur un direct ne rend jamais la main, là où `resolve_media_url` rend un manifeste HLS qu'un lecteur suit aussi longtemps que l'émission dure. L'adresse rendue est signée et périme en quelques heures : la résoudre juste avant de s'en servir et ne jamais la garder.
+**Télécharger ou résoudre ? Se tromper échoue d'une façon difficile à lire.**
+
+- **Télécharger** quand le média finit puis qu'on veut un fichier.
+- **Résoudre** quand on veut lire au fil de l'eau, surtout quand le média peut ne pas finir. **Une émission en direct ne finit jamais de se télécharger**, donc `download_audio` sur un direct ne rend jamais la main, là où `resolve_media_url` rend un manifeste HLS qu'un lecteur suit aussi longtemps que l'émission dure.
+
+L'adresse rendue est signée puis périme en quelques heures : la résoudre juste avant de s'en servir, ne jamais la garder.
 
 C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas de catalogue de flux, pas de métadonnées de chaîne/engagement, pas de sous-titres, pas de commentaires, pas de post-traitement ffmpeg, pas de repli Tor — tout cela existe dans l'original Python et reste volontairement hors périmètre ici, tant qu'aucun usage réel ne le réclame.
 
@@ -120,7 +125,11 @@ cargo test              # tests unitaires + validation d'URL + binaire manquant,
 cargo test -- --ignored # tests réseau réels contre une vidéo YouTube publique stable
 ```
 
-Les tests `--ignored` sont ignorés par défaut car ils touchent le réseau. Limite connue à ce jour : `fetch_metadata` (métadonnées seules, pas de flux média) fonctionne de façon fiable ; le test ignoré `download_audio` peut échouer avec un `HTTP 403 Forbidden` renvoyé par `yt-dlp` dans des environnements en bac à sable/de type CI sans cookies de navigateur ni fournisseur de jeton PO configuré — c'est une mesure anti-robot côté YouTube sur le CDN média, une limite connue et largement documentée de `yt-dlp`, pas un bug de ce wrapper (l'erreur `CommandFailed` qui en résulte est exactement ce que ce crate est censé remonter dans ce cas).
+Les tests `--ignored` sont ignorés par défaut car ils touchent le réseau.
+
+Limite connue à ce jour : `fetch_metadata` (métadonnées seules, pas de flux média) fonctionne de façon fiable, mais le test ignoré `download_audio` peut échouer avec un `HTTP 403 Forbidden` renvoyé par `yt-dlp` dans des environnements en bac à sable ou de type CI, sans cookies de navigateur ni fournisseur de jeton PO configuré.
+
+C'est une mesure anti-robot côté YouTube sur le CDN média — une limite connue puis largement documentée de `yt-dlp`, pas un bug de ce wrapper. L'erreur `CommandFailed` qui en résulte est exactement ce que ce crate est censé remonter dans ce cas.
 
 La plupart des branches d'erreur (`CommandFailed`, `OutputFileNotFound`, le chemin de détection du message `InvalidUrl`, les erreurs de lancement autres que `NotFound`, une sortie `yt-dlp` malformée ou vide) sont exercées de façon déterministe, sans réseau, en pointant `YOUTUBE_HELPER_YTDLP_BIN` vers de petits scripts shell factices générés à la volée (`src/test_support.rs`) — c'est l'essentiel du nombre de tests de `cargo test`, pas les deux tests `#[ignore]`.
 
