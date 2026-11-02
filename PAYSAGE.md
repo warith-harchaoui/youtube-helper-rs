@@ -1,6 +1,6 @@
 # Paysage
 
-🇫🇷 Français · [🇬🇧 LANDSCAPE.md](https://github.com/warith-harchaoui/youtube-helper-rs/blob/master/LANDSCAPE.md)
+🇫🇷 Français · [🇬🇧 LANDSCAPE.md](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/LANDSCAPE.md)
 
 Crates voisins puis concurrents dans l'espace « piloter yt-dlp depuis Rust », comparés à `youtube-helper-rs`. Les notes
 vont de ⭐ (1) à ⭐⭐⭐⭐⭐ (5), évaluées sur la tâche visée par `youtube-helper-rs` :

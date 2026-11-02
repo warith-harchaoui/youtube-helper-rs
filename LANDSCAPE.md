@@ -1,6 +1,6 @@
 # Landscape
 
-[🇫🇷 PAYSAGE.md](https://github.com/warith-harchaoui/youtube-helper-rs/blob/master/PAYSAGE.md) · 🇬🇧 English
+[🇫🇷 PAYSAGE.md](https://github.com/warith-harchaoui/youtube-helper-rs/blob/main/PAYSAGE.md) · 🇬🇧 English
 
 Related and competing crates in the "drive yt-dlp from Rust" space, benchmarked against `youtube-helper-rs`.
 Ratings are ⭐ (1) to ⭐⭐⭐⭐⭐ (5), scored on `youtube-helper-rs`'s intended job:
