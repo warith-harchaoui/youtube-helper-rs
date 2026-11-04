@@ -62,7 +62,7 @@ That's it for v0.1. No video download, no thumbnail download, no stream catalog,
 
 ## How it works
 
-![How youtube-helper-rs works: a URL in, typed Rust values out, with the yt-dlp binary provisioned rather than merely required](https://raw.githubusercontent.com/warith-harchaoui/youtube-helper-rs/master/assets/diagrams/how-it-works.png)
+![How youtube-helper-rs works: a URL in, typed Rust values out, with the yt-dlp binary provisioned rather than merely required](https://raw.githubusercontent.com/warith-harchaoui/youtube-helper-rs/main/assets/diagrams/how-it-works.png)
 
 ## Requirements
 

@@ -37,7 +37,7 @@ C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas d
 
 ## Comment ça marche
 
-![Comment youtube-helper-rs fonctionne : une URL en entrée, des valeurs Rust typées en sortie, le binaire yt-dlp approvisionné plutôt que seulement exigé](https://raw.githubusercontent.com/warith-harchaoui/youtube-helper-rs/master/assets/diagrams/comment-ca-marche.png)
+![Comment youtube-helper-rs fonctionne : une URL en entrée, des valeurs Rust typées en sortie, le binaire yt-dlp approvisionné plutôt que seulement exigé](https://raw.githubusercontent.com/warith-harchaoui/youtube-helper-rs/main/assets/diagrams/comment-ca-marche.png)
 
 ## Prérequis
 
