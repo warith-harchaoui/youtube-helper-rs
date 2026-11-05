@@ -25,13 +25,14 @@ Nothing is ever installed system-wide, nothing is written outside the user
 cache, and a `yt-dlp` already on `PATH` is never upgraded — its version is the
 operator's choice. `YOUTUBE_HELPER_NO_AUTO_INSTALL=1` turns step 4 off and
 restores the plain `BinaryNotFound` error; `YOUTUBE_HELPER_CACHE_DIR` moves the
-cache.
+cache. `provision::ytdlp()` returns the path this ladder settles on, for a caller
+that wants to know before the first real call.
 
 The download is a real cost paid once per machine. The honest way to avoid it is
 to install `yt-dlp` properly (`pip install yt-dlp`, a distribution package, or
 the standalone build on `PATH`): step 4 is a floor, not a plan.
 
-## v0.1 scope (honest, not aspirational)
+## Scope (honest, not aspirational)
 
 Four functions, on purpose:
 
@@ -47,7 +48,7 @@ Four functions, on purpose:
 
 The resolved URL is signed and expires within hours: resolve immediately before use, and never persist it.
 
-That's it for v0.1. No video download, no thumbnail download, no stream catalog, no channel/engagement metadata, no subtitles, no comments, no ffmpeg post-processing, no Tor fallback — all present in the Python original, all deliberately out of scope here until there's a real consumer that needs them.
+That's it. No video download, no thumbnail download, no stream catalog, no channel/engagement metadata, no subtitles, no comments, no ffmpeg post-processing, no Tor fallback — all present in the Python original, all deliberately out of scope here until there's a real consumer that needs them.
 
 ## Error handling
 
@@ -66,11 +67,13 @@ That's it for v0.1. No video download, no thumbnail download, no stream catalog,
 
 ## Requirements
 
-Rust 1.85 or newer. `yt-dlp` must be installed and reachable on `PATH` (or via the `YOUTUBE_HELPER_YTDLP_BIN` environment variable, which is how the test suite points at a nonexistent binary to exercise `BinaryNotFound` without touching a real install).
+Rust 1.85 or newer. `yt-dlp` is best installed and reachable on `PATH`, or named by `YOUTUBE_HELPER_YTDLP_BIN` (which is also how the test suite points at a nonexistent binary to exercise `BinaryNotFound` without touching a real install); failing both, it is fetched once into the user cache, as described above.
+
+`download_audio` and `download_audio_with_options` also need `ffmpeg` and `ffprobe` on `PATH`: `yt-dlp -x` hands the audio extraction to them, so without them the download fails after fetching the media. `fetch_metadata` and `resolve_media_url` do not.
 
 ```bash
-brew install yt-dlp       # macOS
-pip install -U yt-dlp     # anywhere with Python
+brew install yt-dlp ffmpeg   # macOS
+pip install -U yt-dlp        # anywhere with Python (ffmpeg from your package manager)
 ```
 
 ## Install
@@ -78,6 +81,13 @@ pip install -U yt-dlp     # anywhere with Python
 ```toml
 [dependencies]
 youtube-helper-rs = "0.1"
+```
+
+The default `cli` feature builds the `youtube-helper-rs` binary and pulls in `clap`. A
+library consumer that never calls the binary can leave it out:
+
+```toml
+youtube-helper-rs = { version = "0.1", default-features = false }
 ```
 
 ## Usage
@@ -151,7 +161,7 @@ Known limitation as of this writing: `fetch_metadata` (metadata only, no media s
 
 That is YouTube-side anti-bot enforcement on the media CDN — a known and widely reported `yt-dlp` limitation, not a bug in this wrapper. The resulting `CommandFailed` error is exactly what this crate is supposed to surface in that case.
 
-Most error branches (`CommandFailed`, `OutputFileNotFound`, the `InvalidUrl` message-detection path, non-`NotFound` spawn errors, malformed/empty `yt-dlp` stdout) are exercised deterministically, without the network, by pointing `YOUTUBE_HELPER_YTDLP_BIN` at small fake shell scripts written on the fly (`src/test_support.rs`) — that's most of `cargo test`'s test count, not the two `#[ignore]`d ones.
+Most error branches (`CommandFailed`, `OutputFileNotFound`, the `InvalidUrl` message-detection path, non-`NotFound` spawn errors, malformed/empty `yt-dlp` stdout) are exercised deterministically, without the network, by pointing `YOUTUBE_HELPER_YTDLP_BIN` at small fake shell scripts written on the fly (`src/test_support.rs`) — that's most of `cargo test`'s test count, not the three `#[ignore]`d ones.
 
 ## Project status
 
@@ -171,13 +181,13 @@ To reproduce:
 ```bash
 cargo install cargo-llvm-cov --locked
 
-# Sur macOS sans rustup (toolchain Homebrew), pointer vers les outils LLVM d'Xcode :
+# On macOS without rustup (Homebrew toolchain), point at Xcode's LLVM tools:
 export LLVM_COV=$(xcrun -f llvm-cov)
 export LLVM_PROFDATA=$(xcrun -f llvm-profdata)
-# Avec rustup: `rustup component add llvm-tools-preview` suffit, pas besoin des exports ci-dessus.
+# With rustup: `rustup component add llvm-tools-preview` is enough, no exports needed.
 
-cargo llvm-cov --summary-only                                                   # sans réseau
-cargo llvm-cov --summary-only --ignore-run-fail -- --include-ignored --test-threads=1  # avec les tests réseau
+cargo llvm-cov --summary-only                                                   # no network
+cargo llvm-cov --summary-only --ignore-run-fail -- --include-ignored --test-threads=1  # with the network tests
 ```
 
 ## Checks before pushing

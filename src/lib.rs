@@ -5,7 +5,7 @@
 //! of `yt-dlp`'s extraction logic; it shells out and turns the result into
 //! typed Rust values and a `thiserror`-based error enum.
 //!
-//! v0.1 scope: video metadata retrieval ([`fetch_metadata`]), audio download
+//! Scope: video metadata retrieval ([`fetch_metadata`]), audio download
 //! ([`download_audio`], or [`download_audio_with_options`] to pick the
 //! [`AudioFormat`]) and direct media URL resolution
 //! ([`resolve_media_url`]). See `README.md` for the full picture of what is

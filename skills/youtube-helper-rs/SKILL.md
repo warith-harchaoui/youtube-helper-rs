@@ -26,6 +26,9 @@ provisioned copy. If resolution fails you get
 `YoutubeHelperError::BinaryNotFound`, not a panic — report that to the user
 plainly, because the fix is on their machine, not in their code.
 
+Downloading the audio also needs `ffmpeg` and `ffprobe` on `PATH`, because
+`yt-dlp -x` hands the extraction to them; metadata and resolve do not.
+
 ## The three operations
 
 | Intent | CLI | Library |

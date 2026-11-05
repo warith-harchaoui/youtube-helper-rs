@@ -6,6 +6,31 @@
 
 Réécriture en Rust de la promesse centrale de [`youtube-helper`](https://github.com/warith-harchaoui/youtube-helper), pas un portage ligne à ligne de son code. `youtube-helper-rs` invoque le binaire [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) en sous-processus via `std::process::Command` et transforme sa sortie en valeurs Rust typées et en une énumération d'erreurs `thiserror`. Il ne réimplémente aucune logique d'extraction de `yt-dlp` — `yt-dlp` sait déjà parler à des centaines de sites vidéo ; ce crate se contente d'envelopper son invocation dans une interface Rust cohérente.
 
+## Le binaire `yt-dlp` est approvisionné, pas seulement exigé
+
+Chaque fonction ici finit par un appel à `yt-dlp`. Une caisse dont toute la raison d'être
+dépend d'un binaire ne devrait pas se contenter de le dire dans un README : la panne tombe loin
+de sa cause. Dans un service, elle surgit des semaines après le déploiement sous forme d'erreur
+de transcription ; on lit « le produit est cassé » au lieu de « l'image est incomplète ». Le
+binaire est donc résolu dans cet ordre, la première fois qu'on en a besoin :
+
+1. `YOUTUBE_HELPER_YTDLP_BIN` : un choix explicite gagne toujours.
+2. `yt-dlp` sur le `PATH` : le cas normal.
+3. Une copie téléchargée plus tôt, dans le dossier de cache de l'utilisateur.
+4. Sinon, la version autonome officielle pour la plateforme est téléchargée depuis la
+   publication GitHub de `yt-dlp`, rendue exécutable puis utilisée.
+
+Rien n'est jamais installé pour tout le système, rien n'est écrit hors du cache de
+l'utilisateur ; un `yt-dlp` déjà présent sur le `PATH` n'est jamais mis à jour, sa version
+reste le choix de l'exploitant. `YOUTUBE_HELPER_NO_AUTO_INSTALL=1` coupe l'étape 4 et rend
+l'erreur `BinaryNotFound` telle quelle ; `YOUTUBE_HELPER_CACHE_DIR` déplace le cache.
+`provision::ytdlp()` rend le chemin auquel cette échelle aboutit, pour qui veut le savoir avant
+le premier vrai appel.
+
+Le téléchargement est un vrai coût, payé une fois par machine. La façon honnête de l'éviter
+reste d'installer `yt-dlp` correctement (`pip install yt-dlp`, un paquet de distribution ou la
+version autonome sur le `PATH`) : l'étape 4 est un plancher, pas un plan.
+
 ## Périmètre (honnête, pas aspirationnel)
 
 Quatre fonctions, volontairement :
@@ -22,13 +47,13 @@ Quatre fonctions, volontairement :
 
 L'adresse rendue est signée puis périme en quelques heures : la résoudre juste avant de s'en servir, ne jamais la garder.
 
-C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas de catalogue de flux, pas de métadonnées de chaîne/engagement, pas de sous-titres, pas de commentaires, pas de post-traitement ffmpeg, pas de repli Tor — tout cela existe dans l'original Python et reste volontairement hors périmètre ici, tant qu'aucun usage réel ne le réclame.
+C'est tout. Pas de téléchargement vidéo, pas de miniature, pas de catalogue de flux, pas de métadonnées de chaîne/engagement, pas de sous-titres, pas de commentaires, pas de post-traitement ffmpeg, pas de repli Tor — tout cela existe dans l'original Python et reste volontairement hors périmètre ici, tant qu'aucun usage réel ne le réclame.
 
 ## Gestion des erreurs
 
 `YoutubeHelperError` (via `thiserror`) donne à chaque mode d'échec sa propre variante plutôt qu'une erreur opaque unique :
 
-- `BinaryNotFound` — `yt-dlp` n'est pas sur le `PATH` (ni à l'endroit pointé par `YOUTUBE_HELPER_YTDLP_BIN`).
+- `BinaryNotFound` — `yt-dlp` n'a pas pu être approvisionné : il n'est pas sur le `PATH`, aucune copie n'a été téléchargée plus tôt et le téléchargement automatique a été refusé (`YOUTUBE_HELPER_NO_AUTO_INSTALL=1`) ou s'est avéré impossible.
 - `InvalidUrl` — l'URL est vide/malformée ou `yt-dlp` lui-même la rejette comme non supportée.
 - `CommandFailed` — `yt-dlp` s'est exécuté mais a terminé en erreur pour une autre raison (échec réseau, restriction géographique, restriction d'âge, vidéo supprimée, limitation de débit, ...). Porte la sortie d'erreur brute.
 - `JsonParse` — `yt-dlp --dump-json` a renvoyé une sortie qui ne correspond pas à la forme attendue.
@@ -41,11 +66,13 @@ C'est tout pour la v0.1. Pas de téléchargement vidéo, pas de miniature, pas d
 
 ## Prérequis
 
-Rust 1.85 ou plus récent. `yt-dlp` doit être installé et accessible sur le `PATH` (ou via la variable d'environnement `YOUTUBE_HELPER_YTDLP_BIN`, qui sert justement à la suite de tests pour pointer vers un binaire inexistant afin d'exercer `BinaryNotFound` sans toucher à une vraie installation).
+Rust 1.85 ou plus récent. `yt-dlp` gagne à être installé et accessible sur le `PATH` ou désigné par `YOUTUBE_HELPER_YTDLP_BIN` (variable qui sert aussi à la suite de tests pour pointer vers un binaire inexistant afin d'exercer `BinaryNotFound` sans toucher à une vraie installation) ; à défaut des deux, il est téléchargé une fois dans le cache de l'utilisateur, comme décrit plus haut.
+
+`download_audio` et `download_audio_with_options` demandent aussi `ffmpeg` avec `ffprobe` sur le `PATH` : `yt-dlp -x` leur confie l'extraction de l'audio, donc sans eux le téléchargement échoue après avoir récupéré le média. `fetch_metadata` comme `resolve_media_url` s'en passent.
 
 ```bash
-brew install yt-dlp       # macOS
-pip install -U yt-dlp     # partout où Python est disponible
+brew install yt-dlp ffmpeg   # macOS
+pip install -U yt-dlp        # partout où Python est disponible (ffmpeg via le gestionnaire de paquets)
 ```
 
 ## Installation
@@ -53,6 +80,13 @@ pip install -U yt-dlp     # partout où Python est disponible
 ```toml
 [dependencies]
 youtube-helper-rs = "0.1"
+```
+
+La fonctionnalité `cli`, active par défaut, construit le binaire `youtube-helper-rs` et tire
+`clap`. Une bibliothèque qui n'appelle jamais le binaire peut s'en passer :
+
+```toml
+youtube-helper-rs = { version = "0.1", default-features = false }
 ```
 
 ## Utilisation
@@ -112,7 +146,7 @@ l'utilisateur. L'installation pour les deux hôtes est dans
 
 Son catalogue de déclencheurs est imposé, pas décoratif :
 [`TRIGGERS.md`](TRIGGERS.md) est le catalogue destiné aux humains,
-`references/triggers.md` en est le miroir destiné à l'agent, et
+`references/triggers.md` en est le miroir destiné à l'agent ;
 `tests/skill.rs` fait échouer `cargo test` — donc le hook de pré-push — si les
 deux divergent, si la `description` du skill dépasse le plafond publié de 1024
 caractères, si son `name` cesse de correspondre à son dossier ou s'il pointe
@@ -131,7 +165,7 @@ Limite connue à ce jour : `fetch_metadata` (métadonnées seules, pas de flux m
 
 C'est une mesure anti-robot côté YouTube sur le CDN média — une limite connue puis largement documentée de `yt-dlp`, pas un bug de ce wrapper. L'erreur `CommandFailed` qui en résulte est exactement ce que ce crate est censé remonter dans ce cas.
 
-La plupart des branches d'erreur (`CommandFailed`, `OutputFileNotFound`, le chemin de détection du message `InvalidUrl`, les erreurs de lancement autres que `NotFound`, une sortie `yt-dlp` malformée ou vide) sont exercées de façon déterministe, sans réseau, en pointant `YOUTUBE_HELPER_YTDLP_BIN` vers de petits scripts shell factices générés à la volée (`src/test_support.rs`) — c'est l'essentiel du nombre de tests de `cargo test`, pas les deux tests `#[ignore]`.
+La plupart des branches d'erreur (`CommandFailed`, `OutputFileNotFound`, le chemin de détection du message `InvalidUrl`, les erreurs de lancement autres que `NotFound`, une sortie `yt-dlp` malformée ou vide) sont exercées de façon déterministe, sans réseau, en pointant `YOUTUBE_HELPER_YTDLP_BIN` vers de petits scripts shell factices générés à la volée (`src/test_support.rs`) — c'est l'essentiel du nombre de tests de `cargo test`, pas les trois tests `#[ignore]`.
 
 ## État du projet
 
@@ -168,7 +202,7 @@ cargo test --all
 scripts/check-fresh-resolve.sh   # compile sans Cargo.lock, comme un consommateur en aval
 ```
 
-Le dernier existe parce que les trois autres et la CI, compilent tous contre le
+Le dernier existe parce que les trois autres, comme la CI, compilent tous contre le
 `Cargo.lock` commité — que personne n'utilise en aval du crate publié. Un intervalle de
 dépendance devenu mauvais reste vert ici tout en cassant chaque `cargo add` / `cargo
 install` neuf et `cargo publish --dry-run` ne le voit pas non plus (il vérifie avec le
