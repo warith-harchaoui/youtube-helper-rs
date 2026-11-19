@@ -4,6 +4,22 @@ All notable changes to `youtube-helper-rs` are documented here. The format follo
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.7] - 2026-11-19
+
+### Documentation
+
+- **The crate page now says what a download needs.** README and LISEZMOI say
+  that audio download requires ffmpeg on `PATH` and how yt-dlp is provisioned;
+  the crate docs no longer call themselves "v0.1 scope". They also gain a
+  "how it works" diagram, a choice between downloading and resolving, and a
+  landscape (LANDSCAPE.md / PAYSAGE.md). crates.io and docs.rs show the README
+  of the published version, so these corrections needed a release to reach
+  them.
+
+### Tests
+
+- A test refuses any machine path or hard-coded absolute path in tracked files.
+
 ## [0.1.6] - 2026-10-23
 
 ### Fixed
