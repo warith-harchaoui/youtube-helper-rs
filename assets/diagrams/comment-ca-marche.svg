@@ -44,7 +44,7 @@
   <text class="panel-label" x="242" y="76">CE QU'ELLE FAIT</text>
   <rect class="stage" x="242" y="94" width="206" height="78" rx="10"/>
   <text class="n-title" x="345" y="127" text-anchor="middle">trouver le binaire</text>
-  <text class="n-sub" x="345" y="146" text-anchor="middle">env, PATH, cache, puis téléchargement</text>
+  <text class="n-sub" x="345" y="146" text-anchor="middle">env, PATH, cache, puis réseau</text>
   <text class="step" x="253" y="110">1</text>
   <path class="flow" d="M452 133 H468" marker-end="url(#yhrf-arrow)"/>
   <rect class="stage" x="474" y="94" width="256" height="78" rx="10"/>
